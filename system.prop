@@ -36,8 +36,3 @@ ro.input.noresample=1
 
 ro.radio.noril=1
 
-ro.secure=0
-ro.adb.secure=0
-ro.debuggable=1
-persist.sys.usb.config=adb,mtp
-sys.usb.config=adb,mtp

@@ -1,0 +1,254 @@
+import init.tenderloin.usb.rc
+import init.tenderloin.modem.rc
+import init.tenderloin.power.rc
+
+on early-init
+    mount debugfs debugfs /sys/kernel/debug
+    chmod 0755 /sys/kernel/debug
+
+    symlink /data/tombstones /tombstones
+
+on init
+    # Set permissions for persist partition
+    mkdir /persist 0771 system system
+
+    # We need to set LVM_SYSTEM_DIR for lvm to work and it does not work
+    # with embedded export command until too late, so we exploit
+    # the fact that there is /bin/sh on the 13th partition that we can use.
+    mkdir /boot
+    mount ext3 /dev/block/mmcblk0p13 /boot wait noatime barrier=1
+
+    # Unfortunately it's dynamically linked so we need to create this
+    # /lib symlink first and kill it later when no longer needed.
+    symlink /boot/lib /lib
+
+    # Also stupid lvm binary expects block devices to live in /dev,
+    # not /dev/block
+    symlink /dev/block/mmcblk0p14 /dev/mmcblk0p14
+    exec /boot/bin/sh -c "LVM_SYSTEM_DIR=/lvm /boot/usr/sbin/lvm.static vgchange -ay"
+
+    # remove all the lvm stuff as well as the moboot nextboot instruction
+    exec /system/xbin/rm -rf /dev/mmcblk0p14 /lib /boot/moboot.next /var
+
+    # remount /boot read-only
+    mount ext3 /dev/block/mmcblk0p13 /boot remount ro wait noatime barrier=1
+
+    symlink /sdcard /storage/sdcard0
+
+on early-boot
+    # set RLIMIT_MEMLOCK to 64MB
+    setrlimit 8 67108864 67108864
+
+    setprop persist.sys.ssr.restart_level 3
+
+on boot
+    chmod 0666 /proc/net/xt_qtaguid/ctrl
+    chmod 0660 /dev/ctp_uart
+
+    # for Invense MPU3050
+    chmod 0664 /dev/mpu
+    chmod 0664 /dev/mpuirq
+    chmod 0664 /dev/timerirq
+    chown system system /dev/mpu
+    chown system system /dev/mpuirq
+    chown system system /dev/timerirq
+
+    chmod 0664 /dev/lm8502
+    chmod 0664 /sys/class/leds/core_navi_left/brightness
+    chmod 0664 /sys/class/leds/core_navi_right/brightness
+    chmod 0664 /sys/devices/i2c-3/3-0033/vibrator/vib0/vib_enable
+    chmod 0664 /sys/devices/i2c-3/3-0033/vibrator/vib0/vib_duty_cycle
+    chown system system /dev/lm8502
+    chown system system /sys/class/leds/core_navi_left/brightness
+    chown system system /sys/class/leds/core_navi_right/brightness
+    chown system system /sys/devices/i2c-3/3-0033/vibrator/vib0/vib_enable
+    chown system system /sys/devices/i2c-3/3-0033/vibrator/vib0/vib_duty_cycle
+
+    #set low voltage point
+    write /sys/devices/i2c-3/3-0031/volt_low 3300000
+
+    # For TS control
+    chown system system /sys/devices/platform/cy8ctma395/vdd
+    chown system system /sys/devices/platform/cy8ctma395/xres
+    chown system system /sys/user_hw/pins/ctp/wake/level
+    chown system system /dev/i2c-5
+
+    # bluetooth power up/down interface
+    chown bluetooth bluetooth /sys/class/rfkill/rfkill0/type
+    chown bluetooth bluetooth /sys/class/rfkill/rfkill0/state
+    chmod 0660 /sys/class/rfkill/rfkill0/state
+
+    # Wifi firmware reload path
+    chown wifi wifi /sys/module/wlan/parameters/fwpath
+
+    # fmtx
+    chown bluetooth bluetooth /sys/class/rfkill/rfkill1/type
+    chown bluetooth bluetooth /sys/class/rfkill/rfkill1/state
+    chmod 0660 /sys/class/rfkill/rfkill1/state
+
+    chown bluetooth bluetooth /dev/rfkill
+    chmod 0660 /dev/rfkill
+
+    chown bluetooth bluetooth /sys/user_hw/pins/bt/reset/level
+    chown bluetooth bluetooth /sys/user_hw/pins/bt/host_wake/level
+
+    # Headphone jack detection
+    chown audio audio /dev/input/event5
+    chmod 0660 /dev/input/event5
+
+    # change permissions for i2c-2 device
+    chmod 0660 /dev/i2c-2
+    chown media media /dev/i2c-2
+
+    # set permission for scaling_governor
+    chown system system /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+    chown system system /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor
+    chmod 0660 /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+    chmod 0660 /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor
+
+    # allow system to modify kgsl trustzone governor
+    chown system system /sys/class/kgsl/kgsl-3d0/pwrscale/trustzone/governor
+    chmod 0664 /sys/class/kgsl/kgsl-3d0/pwrscale/trustzone/governor
+
+    # allow system to modify cpu input boost
+    chown system system /sys/kernel/cpu_input_boost/enabled
+    chmod 0664 /sys/kernel/cpu_input_boost/enabled
+    chown system system /sys/kernel/cpu_input_boost/ib_freqs
+    chmod 0664 /sys/kernel/cpu_input_boost/ib_freqs
+    chown system system /sys/kernel/cpu_input_boost/ib_duration_ms
+    chmod 0664 /sys/kernel/cpu_input_boost/ib_duration_ms
+
+    #increase dirty_writeback_interval
+    write /proc/sys/vm/dirty_writeback_centisecs 60000
+    write /proc/sys/vm/dirty_expire_centisecs 60000
+
+    #Swap only 1 page at a time
+    write /proc/sys/vm/page-cluster 0
+
+    # set swappines to 60
+    write /proc/sys/vm/swappiness 60
+
+    # Increase readahead buffers on MMC devices
+    write /sys/block/mmcblk0/bdi/read_ahead_kb 512
+
+    # For setting tcp delayed ack
+    chown system system /sys/kernel/ipv4/tcp_delack_seg
+    chown system system /sys/kernel/ipv4/tcp_use_userconfig
+
+    #   Assign TCP buffer thresholds to be ceiling value of technology maximums
+    #   Increased technology maximums should be reflected here.
+    write /proc/sys/net/core/rmem_max  2097152
+    write /proc/sys/net/core/wmem_max  2097152
+
+    # CPUFreq limit
+    chown system system /sys/kernel/cpufreq_limit/limited_max_freq
+    chown system system /sys/kernel/cpufreq_limit/limited_min_freq
+
+on fs
+    # mount partitions
+    mount_all /fstab.tenderloin
+
+    # Enable zRAM
+    swapon_all /fstab.tenderloin
+
+on post-fs-data
+    mkdir /data/media 0770 media_rw media_rw
+    chown media_rw media_rw /data/media
+
+    mkdir /data/tombstones 0771 system system
+    mkdir /tombstones/modem 0771 system system
+    mkdir /tombstones/mdm 0771 system system
+    mkdir /tombstones/lpass 0771 system system
+
+    # camera calibration
+    mkdir /data/misc/camera 0770 media system
+    mkdir /data/misc/camera/R5_MVEN003_LD2_ND0_IR0_SH0_FL1_SVEN003_DCCID1044 0770 media media
+
+    # camera config
+    exec /system/bin/touch /data/misc/camera/config.txt
+    chown media system /data/misc/camera/config.txt
+    chmod 660 /data/misc/camera/config.txt
+
+    # permission for qc modem silrent reset
+    chown radio system /sys/module/subsystem_restart/parameters/restart_level
+
+    # Assign TCP buffer thresholds to be ceiling value of technology maximums
+    # Increased technology maximums should be reflected here.
+    write /proc/sys/net/core/rmem_max  1220608
+    write /proc/sys/net/core/wmem_max  1220608
+
+    # Set this property so surfaceflinger is not started by system_init
+    setprop system_init.startsurfaceflinger 0
+
+    # Create the directories used by the Wireless subsystem
+    mkdir /data/misc/wifi 0770 wifi wifi
+    mkdir /data/misc/wifi/sockets 0770 wifi wifi
+    mkdir /data/misc/wifi/wpa_supplicant 0770 wifi wifi
+    mkdir /data/misc/dhcp 0770 dhcp dhcp
+
+    # Mounting of persist is moved to 'on emmc-fs' and 'on fs' sections
+    # We chown/chmod /persist again so because mount is run as root + defaults
+    chown system system /persist
+    chmod 0771 /persist
+
+    # Chown polling nodes as needed from UI running on system server
+    chmod 0664 /sys/devices/platform/msm_sdcc.1/polling
+    chmod 0664 /sys/devices/platform/msm_sdcc.2/polling
+    chmod 0664 /sys/devices/platform/msm_sdcc.3/polling
+    chmod 0664 /sys/devices/platform/msm_sdcc.4/polling
+    chown system system /sys/devices/platform/msm_sdcc.1/polling
+    chown system system /sys/devices/platform/msm_sdcc.2/polling
+    chown system system /sys/devices/platform/msm_sdcc.3/polling
+    chown system system /sys/devices/platform/msm_sdcc.4/polling
+
+    #Create the symlink to qcn wpa_supplicant folder for ar6000 wpa_supplicant
+    mkdir /data/system 0775 system system
+
+    # Create /data/time folder for time-services
+    mkdir /data/time/ 0700 system system
+
+    setprop vold.post_fs_data_done 1
+
+# Adjust socket buffer to enlarge TCP receive window for high bandwidth
+# but only if ro.data.large_tcp_window_size property is set.
+on property:ro.data.large_tcp_window_size=true
+    write /proc/sys/net/ipv4/tcp_adv_win_scale  1
+
+service wpa_supplicant /vendor/bin/hw/wpa_supplicant \
+    -iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf \
+    -I/system/etc/wifi/wpa_supplicant_overlay.conf \
+    -e/data/misc/wifi/entropy.bin -g@android:wpa_wlan0
+    #   we will start as root and wpa_supplicant will switch to user wifi
+    #   after setting up the capabilities required for WEXT
+    #   user wifi
+    #   group wifi inet keystore
+    class main
+    socket wpa_wlan0 dgram 660 wifi wifi
+    disabled
+    oneshot
+
+service tsdriver /system/bin/ts_srv
+    class core
+    user root
+    critical
+
+service reboot_recovery /system/bin/moboot_control.sh recovery
+     class core
+     user root
+     group root
+     disabled
+     oneshot
+
+on property:sys.shutdown.requested=1recovery
+    start reboot_recovery
+
+# Limit to SoC reset (1) and independent SSR (3)
+on property:persist.sys.ssr.restart_level=1
+    write /sys/module/subsystem_restart/parameters/restart_level 1
+
+on property:persist.sys.ssr.restart_level=3
+    write /sys/module/subsystem_restart/parameters/restart_level 3
+
+on property:ro.data.large_tcp_window_size=true
+    # Adjust socket buffer to enlarge TCP receive window for high bandwidth (e.g. DO-RevB)
+    write /proc/sys/net/ipv4/tcp_adv_win_scale  1

@@ -173,8 +173,16 @@ PRODUCT_PROPERTY_OVERRIDES += \
     ro.opengles.version=131072 \
     debug.sf.disable_backpressure=1
 
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES := \
+    ro.secure=0 \
+    ro.adb.secure=0 \
+    ro.debuggable=1 \
+    persist.sys.usb.config=adb,mtp \
+    sys.usb.config=adb,mtp
+
 # Tools
 PRODUCT_PACKAGES += \
+    adbd \
     dosfsck \
     librs_jni \
     libmllite \

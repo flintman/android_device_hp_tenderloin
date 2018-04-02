@@ -15,9 +15,10 @@ PRODUCT_RELEASE_NAME := touchpad
 PRODUCT_MANUFACTURER := HP
 PRODUCT_BUILD_PROP_OVERRIDES += \
     PRODUCT_NAME=touchpad \
-    BUILD_FINGERPRINT="hp/hp_tenderloin/tenderloin:6.0/MRA58K/2256973:user/release-keys" \
     PRIVATE_BUILD_DESC="tenderloin-user 6.0 MRA58K 2256973 release-keys" \
     BUILD_NUMBER=228551
+
+BUILD_FINGERPRINT := "hp/hp_tenderloin/tenderloin:6.0/MRA58K/2256973:user/release-keys"
 
 # Set up the product codename, build version & MOTD.
 PRODUCT_CODENAME := Queo

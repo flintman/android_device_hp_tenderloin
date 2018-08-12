@@ -1,22 +1,3 @@
 [
- {
-    "repository": "DirtyUnicorns/android_device_hp_tenderloin-common",
-    "target_path": "device/hp/tenderloin-common",
-    "branch"     : "o8x-caf"
- },
- {
-    "repository": "DirtyUnicorns/android_hardware_atheros",
-    "target_path": "hardware/atheros",
-    "branch":      "o8x-caf"
- },
- {
-    "repository": "DirtyUnicorns/android_kernel_htc_msm8960",
-    "target_path": "kernel/htc/msm8960",
-    "branch":      "o8x-caf"
- },
- {
-    "repository": "DirtyUnicorns/android_vendor_hp",
-    "target_path": "vendor/hp",
-    "branch":      "o8x-caf"
- }
+
 ]
